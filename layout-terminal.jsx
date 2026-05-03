@@ -1252,22 +1252,22 @@ function ShareButton({ correlation, themeColors }) {
     };
   }, [open]);
 
-  const handleClick = async () => {
-    const shareData = {
-      title: `Useful correlation: ${correlation.title}`,
-      text: shareText,
-      url: permalink,
-    };
-    // Mobile / supported browsers: native share sheet handles everything.
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (e) {
-        // user cancelled — fall through to popover
-      }
+  // Hover-open with a small close delay so moving from button → popover doesn't flicker it shut.
+  const closeTimer = React.useRef(null);
+  const cancelClose = () => {
+    if (closeTimer.current) {
+      clearTimeout(closeTimer.current);
+      closeTimer.current = null;
     }
-    // Desktop: open the popover.
+  };
+  const scheduleClose = () => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), 120);
+  };
+  React.useEffect(() => () => cancelClose(), []);
+
+  const handleClick = () => {
+    // Click still toggles — useful for touch / keyboard users.
     setOpen((v) => !v);
   };
 
@@ -1285,7 +1285,12 @@ function ShareButton({ correlation, themeColors }) {
   const mailtoUrl = `mailto:?subject=${encodeURIComponent(`Useful correlation: ${correlation.title}`)}&body=${encodeURIComponent(`${shareText}\n\n${permalink}`)}`;
 
   return (
-    <div ref={wrapperRef} style={{ position: "relative", flexShrink: 0 }}>
+    <div
+      ref={wrapperRef}
+      onMouseEnter={() => { cancelClose(); setOpen(true); }}
+      onMouseLeave={scheduleClose}
+      style={{ position: "relative", flexShrink: 0 }}
+    >
       <button
         onClick={handleClick}
         onMouseEnter={() => setHover(true)}
