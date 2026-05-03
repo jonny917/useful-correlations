@@ -1690,6 +1690,27 @@ function MiniSpark({ seriesA, seriesB, themeColors }) {
 }
 
 function TerminalSubmit({ id, themeColors }) {
+  const [copied, setCopied] = React.useState(false);
+  const email = "hello@useful-correlations.com";
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(email);
+    } catch (e) {
+      // Fallback for older browsers / non-HTTPS contexts
+      const ta = document.createElement("textarea");
+      ta.value = email;
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand("copy"); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
     <section
       id={id}
@@ -1732,11 +1753,13 @@ function TerminalSubmit({ id, themeColors }) {
           Send us two datasets as .csv files and we’ll plot them for you.
         </p>
       </div>
-      <div>
-        <a
-          href="mailto:hello@useful-correlations.com?subject=A%20useful%20correlation"
+      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label={copied ? "Email address copied to clipboard" : `Copy email address ${email}`}
           style={{
-            background: themeColors.primary,
+            background: copied ? themeColors.surface : themeColors.primary,
             color: themeColors.text,
             padding: "16px 28px",
             borderRadius: 12,
@@ -1744,11 +1767,31 @@ function TerminalSubmit({ id, themeColors }) {
             fontSize: 16,
             cursor: "pointer",
             textDecoration: "none",
-            display: "inline-block",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 10,
+            border: "none",
+            font: "inherit",
+            transition: "background 180ms ease",
           }}
         >
-          hello@useful-correlations.com
-        </a>
+          {copied ? (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+              Email copied to clipboard
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+              </svg>
+              {email}
+            </>
+          )}
+        </button>
       </div>
     </section>
   );
