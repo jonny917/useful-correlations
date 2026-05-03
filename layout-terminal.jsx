@@ -1367,13 +1367,6 @@ function SharePopover({ themeColors, linkedInUrl, mailtoUrl, permalink, copied, 
       />
       <ShareOption
         themeColors={themeColors}
-        href={mailtoUrl}
-        onClick={onClose}
-        icon={<EmailGlyph />}
-        label="Share by email"
-      />
-      <ShareOption
-        themeColors={themeColors}
         onClick={onCopy}
         icon={copied ? <CheckGlyph color={themeColors.text} /> : <LinkGlyph />}
         label={copied ? "Link copied" : "Copy link"}

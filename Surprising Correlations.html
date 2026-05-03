@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Surprising Correlations — Design Exploration</title>
+
+    <!-- Open Graph / social preview defaults — overridden per-correlation by JS -->
+    <meta name="description" content="Surprising but useful data pairings from the noise of the world." />
+    <meta property="og:site_name" content="Useful Correlations" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Useful Correlations" />
+    <meta property="og:description" content="Surprising but useful data pairings from the noise of the world." />
+    <meta property="og:url" content="https://useful-correlations.com/" />
+    <meta property="og:image" content="https://useful-correlations.com/og-default.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Useful Correlations" />
+    <meta name="twitter:description" content="Surprising but useful data pairings from the noise of the world." />
+    <meta name="twitter:image" content="https://useful-correlations.com/og-default.png" />
+    <link rel="canonical" href="https://useful-correlations.com/" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      html, body { margin: 0; padding: 0; background: #EFE7DA; font-family: Inter, system-ui, sans-serif; }
+      *, *::before, *::after { box-sizing: border-box; }
+    </style>
+
+    <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+    <script type="text/babel" src="tweaks-panel.jsx"></script>
+    <script type="text/babel" src="data.jsx"></script>
+    <script type="text/babel" src="layout-terminal.jsx"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+      const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+        "theme": "forest",
+        "activeCorrelation": "whisky-weather",
+        "chartType": "default"
+      }/*EDITMODE-END*/;
+
+      const THEMES = {
+        peach: {
+          name: "Peach (Bento)",
+          primary: "#FAD4C0",
+          secondary: "#80A1C1",
+          surface: "#FFF5E6",
+          text: "#111827",
+        },
+        ink: {
+          name: "Ink",
+          primary: "#FACC15",
+          secondary: "#7F9CF5",
+          surface: "#F4F1EA",
+          text: "#0A0A0A",
+        },
+        forest: {
+          name: "Forest",
+          primary: "#A7E0B5",
+          secondary: "#E07A5F",
+          surface: "#F4EFE6",
+          text: "#1F2A24",
+        },
+        midnight: {
+          name: "Midnight",
+          primary: "#FAD4C0",
+          secondary: "#80A1C1",
+          surface: "#1A1A22",
+          text: "#FFF5E6",
+        },
+      };
+
+      function App() {
+        const [tweaks, setTweak] = useTweaks(TWEAK_DEFAULTS);
+        const themeColors = THEMES[tweaks.theme] || THEMES.peach;
+        const correlations = window.CORRELATIONS;
+
+        // Apply theme as CSS vars on root for body bg
+        React.useEffect(() => {
+          document.body.style.background = themeColors.surface === "#FFF5E6" ? "#EFE7DA" : themeColors.surface;
+        }, [themeColors]);
+
+        const sharedProps = {
+          correlations,
+          themeColors,
+        };
+
+        return (
+          <>
+            <window.TerminalLayout {...sharedProps} />
+
+            <TweaksPanel title="Tweaks">
+              <TweakSection title="Theme">
+                <TweakSelect
+                  label="Color theme"
+                  value={tweaks.theme}
+                  onChange={(v) => setTweak("theme", v)}
+                  options={Object.entries(THEMES).map(([k, v]) => ({ value: k, label: v.name }))}
+                />
+              </TweakSection>
+              <TweakSection title="Pairing">
+                <TweakSelect
+                  label="Featured correlation"
+                  value={tweaks.activeCorrelation}
+                  onChange={(v) => {
+                    setTweak("activeCorrelation", v);
+                    // broadcast to artboards via custom event so they can sync
+                    window.dispatchEvent(new CustomEvent("setCorrelation", { detail: v }));
+                  }}
+                  options={correlations.map((c) => ({ value: c.id, label: c.title }))}
+                />
+              </TweakSection>
+            </TweaksPanel>
+          </>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+    </script>
+  </body>
+</html>
