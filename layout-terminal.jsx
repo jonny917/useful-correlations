@@ -1142,6 +1142,54 @@ function RPanel({ correlation, themeColors }) {
     : Math.min(sigDots - 1, Math.floor(meterProgress * sigDots));
   // Only show the active label after the meter settles, so words don't flash mid-fill
   const showLabel = meterProgress >= 1;
+
+  // Subtle audio cue: a short rising "tick" each time the meter fills another band.
+  // Synthesized with Web Audio (no asset). Gated behind a one-time user gesture
+  // because browsers block autoplay audio until the user interacts with the page.
+  const audioCtxRef = React.useRef(null);
+  const prevStepRef = React.useRef(0);
+  React.useEffect(() => {
+    const arm = () => {
+      if (!audioCtxRef.current) {
+        try {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) { /* unsupported */ }
+      }
+    };
+    window.addEventListener("pointerdown", arm, { once: true });
+    window.addEventListener("keydown", arm, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", arm);
+      window.removeEventListener("keydown", arm);
+    };
+  }, []);
+  // Reset the note tracker whenever the correlation (and its animation) restarts.
+  React.useEffect(() => { prevStepRef.current = 0; }, [correlation.id]);
+  React.useEffect(() => {
+    const ctx = audioCtxRef.current;
+    // Always play the full ascending do-re-mi-fa-so as the meter animates,
+    // independent of how many strength bands a given correlation fills — so
+    // every card plays the same complete five-note run.
+    const step = Math.min(5, Math.floor(meterProgress * 5 + 0.0001));
+    if (!ctx) { prevStepRef.current = step; return; }
+    if (step > prevStepRef.current && step > 0) {
+      const scale = [261.63, 293.66, 329.63, 349.23, 392.0]; // do re mi fa so (C4 D4 E4 F4 G4)
+      const freq = scale[Math.min(scale.length - 1, step - 1)];
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.08, t + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 0.14);
+    }
+    prevStepRef.current = step;
+  }, [meterProgress]);
+
   return (
     <div
       style={{
@@ -1416,12 +1464,40 @@ function AnnotationCallout({ label, themeColors, chartWidth, cxValue }) {
   );
 }
 
+// Distinct one-shot tone for event clicks — a soft fixed-pitch bell, the same
+// every time (intentionally different from the meter's ascending scale). The
+// click itself is the user gesture, so we can lazily spin up a shared context.
+let _eventAudioCtx = null;
+function playEventTone() {
+  try {
+    if (!_eventAudioCtx) _eventAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch (e) { return; }
+  const ctx = _eventAudioCtx;
+  if (!ctx) return;
+  if (ctx.state === "suspended") ctx.resume();
+  const t = ctx.currentTime;
+  // Clean, bright "ping": a single high sine with a fast attack and a long,
+  // shimmering exponential tail.
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1318.5, t); // E6
+  const gn = gain.gain;
+  gn.setValueAtTime(0.0001, t);
+  gn.exponentialRampToValueAtTime(0.14, t + 0.004);
+  gn.exponentialRampToValueAtTime(0.0001, t + 0.6);
+  osc.connect(gain).connect(ctx.destination);
+  osc.start(t);
+  osc.stop(t + 0.62);
+}
+
 function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHighlight }) {
   const scrollRef = React.useRef(null);
   const rowRefs = React.useRef([]);
   const annotations = correlation.annotations;
 
   const handleClick = (i) => {
+    playEventTone();
     onHighlight(highlightedAnnotation === i ? null : i);
     // Hint that there's more below: when a row is clicked, scroll the next row
     // into view if it's currently hidden under the fold. Uses the container's
@@ -1563,6 +1639,7 @@ function AnchorScenariosCard({ correlation, themeColors, highlightedPpm, onHighl
   }
 
   const handleClick = (i, ppmVal) => {
+    playEventTone();
     onHighlight(ppmVal);
     // If user clicks a row past the first couple, scroll the *next* row into
     // view so they get a hint there's more below. Uses the container's own
