@@ -14,10 +14,18 @@ const terminalStyles = {
 };
 
 function TerminalLayout({ correlations, themeColors }) {
-  // Read initial active id from URL hash (e.g. #whisky-weather), falling back to first.
+  // Read initial active id from URL: ?c=<id> (shareable, survives link scrapers)
+  // or #<id> (legacy/in-app), falling back to the default card.
   const initialId = (() => {
+    if (typeof window !== "undefined") {
+      const fromQuery = new URLSearchParams(window.location.search).get("c") || "";
+      if (correlations.find((c) => c.id === fromQuery)) return fromQuery;
+    }
     const fromHash = typeof window !== "undefined" ? decodeURIComponent((window.location.hash || "").slice(1)) : "";
-    return correlations.find((c) => c.id === fromHash) ? fromHash : correlations[0].id;
+    if (correlations.find((c) => c.id === fromHash)) return fromHash;
+    // Default landing card when there's no hash.
+    const preferred = correlations.find((c) => c.id === "friends-screens");
+    return preferred ? preferred.id : correlations[0].id;
   })();
   const [activeId, setActiveId] = React.useState(initialId);
   const active = correlations.find((c) => c.id === activeId) || correlations[0];
@@ -1409,6 +1417,25 @@ function AnnotationCallout({ label, themeColors, chartWidth, cxValue }) {
 }
 
 function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHighlight }) {
+  const scrollRef = React.useRef(null);
+  const rowRefs = React.useRef([]);
+  const annotations = correlation.annotations;
+
+  const handleClick = (i) => {
+    onHighlight(highlightedAnnotation === i ? null : i);
+    // Hint that there's more below: when a row is clicked, scroll the next row
+    // into view if it's currently hidden under the fold. Uses the container's
+    // own scrollTop — never scrollIntoView.
+    const container = scrollRef.current;
+    const nextRow = rowRefs.current[i + 1];
+    if (container && nextRow && i >= 1 && i < annotations.length - 1) {
+      const targetTop = nextRow.offsetTop - container.clientHeight + nextRow.offsetHeight + 8;
+      if (targetTop > container.scrollTop) {
+        container.scrollTo({ top: targetTop, behavior: "smooth" });
+      }
+    }
+  };
+
   return (
     <div
       style={{
@@ -1442,6 +1469,19 @@ function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHi
       </div>
       <div
         style={{
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 12,
+          color: themeColors.text + "90",
+          lineHeight: 1.5,
+          marginBottom: 16,
+          marginTop: -8,
+        }}
+      >
+        Tap an event to highlight it on the chart.
+      </div>
+      <div
+        ref={scrollRef}
+        style={{
           flex: 1,
           minHeight: 0,
           maxHeight: 240,
@@ -1453,13 +1493,14 @@ function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHi
         }}
         className="events-scroll"
       >
-        {correlation.annotations.map((a, i) => (
+        {annotations.map((a, i) => (
           <AnnotationRow
             key={i}
+            ref={(el) => (rowRefs.current[i] = el)}
             annotation={a}
-            isLast={i === correlation.annotations.length - 1}
+            isLast={i === annotations.length - 1}
             isActive={highlightedAnnotation === i}
-            onClick={() => onHighlight(highlightedAnnotation === i ? null : i)}
+            onClick={() => handleClick(i)}
             themeColors={themeColors}
             weekLabels={correlation.weekLabels}
           />
@@ -1700,11 +1741,12 @@ const ScenarioRow = React.forwardRef(function ScenarioRow({ scenario, score, isA
   );
 });
 
-function AnnotationRow({ annotation, isLast, isActive, onClick, themeColors, weekLabels }) {
+const AnnotationRow = React.forwardRef(function AnnotationRow({ annotation, isLast, isActive, onClick, themeColors, weekLabels }, ref) {
   const [hover, setHover] = React.useState(false);
   const dateLabel = resolveDateLabel(weekLabels, annotation.idx);
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       onMouseEnter={() => setHover(true)}
@@ -1788,7 +1830,7 @@ function AnnotationRow({ annotation, isLast, isActive, onClick, themeColors, wee
       />
     </button>
   );
-}
+});
 
 function ShareButton({ correlation, themeColors }) {
   const [open, setOpen] = React.useState(false);
@@ -1796,8 +1838,8 @@ function ShareButton({ correlation, themeColors }) {
   const [hover, setHover] = React.useState(false);
   const wrapperRef = React.useRef(null);
   const permalink = (() => {
-    if (typeof window === "undefined") return `https://curious-correlations.com/#${correlation.id}`;
-    return `${window.location.origin}${window.location.pathname}#${correlation.id}`;
+    if (typeof window === "undefined") return `https://curious-correlations.com/?c=${correlation.id}`;
+    return `${window.location.origin}${window.location.pathname}?c=${correlation.id}`;
   })();
   const shareText = `${correlation.title} — curious-correlations.com`;
 
@@ -2097,7 +2139,7 @@ function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) 
         style={{
           display: "grid",
           gridAutoFlow: "column",
-          gridAutoColumns: "minmax(320px, 380px)",
+          gridAutoColumns: "360px",
           gap: 24,
           overflowX: "auto",
           scrollSnapType: "x mandatory",

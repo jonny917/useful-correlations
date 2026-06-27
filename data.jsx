@@ -97,46 +97,6 @@ const DATASETS = {
       real: true,
     },
   },
-  "hour-of-week-shaded": {
-    id: "hour-of-week-shaded",
-    label: "Hour of week (Sun 6–10pm shaded)",
-    unit: "hour",
-    cadence: "hourly",
-    startDate: null,
-    endDate: null,
-    data: [12, 10, 8, 7, 9, 14, 22, 35, 48, 52, 41, 28, 18, 12, 10, 9, 11, 16, 24, 38, 51, 56, 44, 30],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
-  "streaming-password-resets-hourly": {
-    id: "streaming-password-resets-hourly",
-    label: "Streaming service password resets",
-    unit: "k/hr",
-    cadence: "hourly",
-    startDate: null,
-    endDate: null,
-    data: [2.1, 1.8, 1.6, 1.4, 1.7, 2.5, 4.1, 6.8, 9.2, 10.4, 7.9, 5.1, 3.0, 2.0, 1.7, 1.5, 1.9, 2.8, 4.4, 7.2, 9.8, 11.1, 8.4, 5.6],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
-  "us-mortgage-30y-monthly": {
-    id: "us-mortgage-30y-monthly",
-    label: "Avg 30-yr mortgage rate",
-    unit: "%",
-    cadence: "monthly",
-    startDate: "2024-01-01",
-    endDate: "2025-12-31",
-    data: [6.8, 6.9, 7.1, 7.0, 6.8, 6.5, 6.3, 6.1, 5.9, 5.7, 5.6, 5.8, 6.0, 6.2, 6.4, 6.3, 6.1, 5.9, 5.6, 5.4, 5.2, 5.0, 4.9, 5.1],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
-  "renovate-youtube-monthly": {
-    id: "renovate-youtube-monthly",
-    label: "'How to renovate' YT views",
-    unit: "M",
-    cadence: "monthly",
-    startDate: "2024-01-01",
-    endDate: "2025-12-31",
-    data: [22, 20, 18, 19, 22, 26, 29, 32, 36, 41, 44, 39, 34, 30, 27, 28, 31, 35, 41, 46, 52, 58, 62, 55],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
   // CO₂ dose-response: x-axis = ppm, y-axis = composite cognitive score (baseline 100).
   // Anchored on Satish et al. 2012 (600/1000/2500 ppm). Curve is interpolated through
   // those three measured points across 400–2500 ppm so the slider can scrub smoothly.
@@ -174,6 +134,77 @@ const DATASETS = {
       real: true,
     },
   },
+  // Friendship recession × solo screen time. Both are modeled yearly trends
+  // (1990–2024) anchored on real survey readings, with intermediate years
+  // interpolated. Co-rising story → dual-line chart.
+  "no-close-friends-yearly": {
+    id: "no-close-friends-yearly",
+    label: "% of Americans who say they have no close friends",
+    unit: "%",
+    cadence: "yearly",
+    startDate: "1990-01-01",
+    endDate: "2024-12-31",
+    // Anchors: 1990 → 3% (Survey Center on American Life), 2021 → 12%, ~2024 → ~18%.
+    data: [3.0, 3.1, 3.2, 3.4, 3.5, 3.7, 3.9, 4.0, 4.2, 4.4, 4.5, 4.9, 5.3, 5.7, 6.1, 6.5, 6.9, 7.2, 7.5, 7.8, 8.0, 8.4, 8.8, 9.2, 9.6, 10.0, 10.4, 10.8, 11.2, 11.5, 11.8, 12.0, 13.5, 15.0, 16.5, 18.0],
+    weekLabels: ["1990","1991","1992","1993","1994","1995","1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"],
+    source: {
+      url: "https://www.americansurveycenter.org/research/the-state-of-american-friendship-change-challenges-and-loss/",
+      label: "Survey Center on American Life (1990, 2021) + recent surveys · modeled · intermediate years interpolated",
+      real: true,
+    },
+  },
+  "solo-screen-hours-yearly": {
+    id: "solo-screen-hours-yearly",
+    label: "Avg solo screen hours per day",
+    unit: "hrs/day",
+    cadence: "yearly",
+    startDate: "1990-01-01",
+    endDate: "2024-12-31",
+    // Anchors: 1990 → ~2.6 (mostly TV), 2000 → ~3.1, 2010 → ~4.6, 2021 → ~6.9, 2024 → ~7.0.
+    data: [2.6, 2.62, 2.65, 2.7, 2.75, 2.8, 2.85, 2.9, 2.95, 3.0, 3.1, 3.25, 3.4, 3.6, 3.8, 4.0, 4.2, 4.35, 4.45, 4.5, 4.6, 4.85, 5.1, 5.4, 5.7, 6.0, 6.2, 6.4, 6.55, 6.65, 6.9, 6.9, 6.95, 7.0, 7.0, 7.05],
+    weekLabels: ["1990","1991","1992","1993","1994","1995","1996","1997","1998","1999","2000","2001","2002","2003","2004","2005","2006","2007","2008","2009","2010","2011","2012","2013","2014","2015","2016","2017","2018","2019","2020","2021","2022","2023","2024","2025"],
+    source: {
+      url: null,
+      label: "Nielsen, eMarketer, USC Digital Future · modeled · intermediate years interpolated",
+      real: true,
+    },
+  },
+  // Swiftonomics — 2023 US leg of the Eras Tour, in chronological order by stop.
+  // Per-stop estimates modeled on a comparable basis from reported figures
+  // (cities published different metrics — GDP vs. hotel revenue vs. taxes).
+  "eras-attendance-by-stop": {
+    id: "eras-attendance-by-stop",
+    label: "Eras tour attendance per stop",
+    unit: "k",
+    cadence: "event",
+    startDate: "2023-03-01",
+    endDate: "2023-08-31",
+    // 20 US stops, attendance ≈ shows × stadium capacity.
+    data: [120, 110, 160, 150, 160, 150, 210, 200, 190, 250, 190, 120, 150, 130, 120, 140, 140, 145, 120, 420],
+    weekLabels: ["Mar '23","Mar","Apr","Apr","Apr","Apr","May","May","May","May","Jun","Jun","Jun","Jun","Jul","Jul","Jul","Jul","Jul","Aug"],
+    source: {
+      url: "https://en.wikipedia.org/wiki/Impact_of_the_Eras_Tour",
+      label: "Pollstar + venue capacities · 2023 US leg · per-stop estimate",
+      real: true,
+    },
+  },
+  "eras-economic-impact-by-stop": {
+    id: "eras-economic-impact-by-stop",
+    label: "Local economic impact ($M)",
+    unit: "$M",
+    cadence: "event",
+    startDate: "2023-03-01",
+    endDate: "2023-08-31",
+    // Modeled to a comparable basis from reported per-city figures
+    // (LA ~$320M / 6 shows, Denver ~$140M / 2 shows, Chicago hotel record, etc.).
+    data: [160, 145, 210, 195, 210, 195, 185, 215, 200, 300, 200, 155, 160, 160, 150, 155, 140, 150, 155, 320],
+    weekLabels: ["Mar '23","Mar","Apr","Apr","Apr","Apr","May","May","May","May","Jun","Jun","Jun","Jun","Jul","Jul","Jul","Jul","Jul","Aug"],
+    source: {
+      url: "https://www.federalreserve.gov/monetarypolicy/beigebook202307.htm",
+      label: "Common Sense Institute, JLL, city tourism boards, Fed Beige Book · modeled · per-stop estimate",
+      real: true,
+    },
+  },
 };
 
 // ----------------------------------------------------------------------------
@@ -196,7 +227,8 @@ const CORRELATION_DEFINITIONS = [
     r: -0.74,
     smoothing: "4-week rolling average",
     annotations: [
-      { idx: 28, label: "Winter trough · seasonal low temp" },
+      { idx: 17, label: "Warm spell · whisky interest bottoms out" },
+      { idx: 30, label: "Whisky searches hit seasonal peak" },
       { idx: 35, label: "Polar vortex · 17.5°F raw" },
     ],
     why: "Colder weather doesn't just change habits, it increases the desire for premium, comfort-driven indulgences like Japanese whisky.",
@@ -212,6 +244,7 @@ const CORRELATION_DEFINITIONS = [
     r: 0.84,
     smoothing: "3-month rolling average",
     annotations: [
+      { idx: 11, label: "Ozempic approved for diabetes" },
       { idx: 69, label: "#Ozempic hits 100M TikTok views" },
       { idx: 85, label: "\"Food noise\" goes mainstream" },
     ],
@@ -240,38 +273,40 @@ const CORRELATION_DEFINITIONS = [
     category: "Air quality × Cognition · scenario · interactive",
   },
   {
-    id: "password-reset",
-    title: "Sunday evenings & password resets",
-    seriesA: { datasetId: "hour-of-week-shaded", color: "primary" },
-    seriesB: { datasetId: "streaming-password-resets-hourly", color: "secondary" },
-    r: 0.84,
+    id: "friends-screens",
+    title: "As solo screen time climbs, close friendships vanish",
+    chartType: "dual-line", // two co-rising modeled trends, 1990–2024
+    seriesA: { datasetId: "solo-screen-hours-yearly", color: "primary" },
+    seriesB: { datasetId: "no-close-friends-yearly", color: "secondary" },
+    r: 0.97,
+    smoothing: "modeled yearly trend",
     annotations: [
-      { idx: 9, label: "'Sunday Scaries' peak" },
-      { idx: 21, label: "Pre-Monday cleanup" },
+      { idx: 2, label: "3% report no close friends" },
+      { idx: 17, label: "iPhone launches" },
+      { idx: 30, label: "Screen time hits a new high" },
+      { idx: 35, label: "18% report no close friends" },
     ],
-    why: {
-      playful: "The Sunday Scaries are real, and they end with you locked out of Hulu. Password resets spike right before bed — the digital equivalent of cleaning your desk before Monday.",
-      serious: "End-of-week behavior includes account hygiene. Reset volume correlates with 'deliberate winding down' — a high-attention, low-distraction window.",
-    },
-    soWhat: "Churn-window targeting: Sunday 8–10pm is when users are *thinking* about their subscriptions. Best moment for retention creative, worst for upsells.",
-    category: "Time × Behavior",
+    why: "The share of Americans with no close friends jumped from 3% in 1990 to roughly 18% today, while solo screen time more than doubled. Connection is now ubiquitous, but closeness has become more elusive.",
+    soWhat: "The opportunity for brands today is to create experiences that give people more reasons to come together, not just more to consume.",
+    category: "Technology × Society · 1990–2024 · modeled",
   },
   {
-    id: "home-reno",
-    title: "Home-reno YouTube & mortgage rates",
-    seriesA: { datasetId: "us-mortgage-30y-monthly", color: "primary" },
-    seriesB: { datasetId: "renovate-youtube-monthly", color: "secondary" },
-    r: -0.78,
+    id: "eras-economy",
+    title: "When Tay-Tay comes to town, the local economy pops off",
+    chartType: "dual-line",
+    seriesA: { datasetId: "eras-attendance-by-stop", color: "primary" },
+    seriesB: { datasetId: "eras-economic-impact-by-stop", color: "secondary" },
+    r: 0.93,
+    smoothing: "per-stop estimates",
     annotations: [
-      { idx: 10, label: "Rate-cut speculation" },
-      { idx: 22, label: "Refi window opens" },
+      { idx: 0, label: "Glendale renames itself \"Swift City\"" },
+      { idx: 7, label: "Fed Beige Book credits Taylor Swift" },
+      { idx: 9, label: "NY-area crowds pack MetLife · $300M" },
+      { idx: 19, label: "6 LA shows · $320M local boost" },
     ],
-    why: {
-      playful: "When mortgage rates dip, people don't just refinance — they binge-watch kitchen demolition videos. The dream of 'staying put and improving' is a leading indicator.",
-      serious: "Lower rates unlock home-equity intent. YouTube reno views lead refi applications by ~3 weeks, making it a leading-indicator panel.",
-    },
-    soWhat: "Intent signal for refi ads: bid up reno-adjacent inventory when YT views climb — you're catching homeowners *before* they shop lenders.",
-    category: "Finance × Media",
+    why: "Each stop of the Eras tour showed how modern fandom can move a city's economy, not just its culture. The \"Swiftonomics\" effect was so pronounced the Federal Reserve cited it by name.",
+    soWhat: "In a cautious post-pandemic economy, the real power of fandom is not attention; it's the shared desire to be part of a cultural moment.",
+    category: "Culture × Economy · 2023 US leg · modeled",
   },
 ];
 
