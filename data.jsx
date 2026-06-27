@@ -137,45 +137,42 @@ const DATASETS = {
     data: [22, 20, 18, 19, 22, 26, 29, 32, 36, 41, 44, 39, 34, 30, 27, 28, 31, 35, 41, 46, 52, 58, 62, 55],
     source: { url: null, label: "Editorial composite (illustrative)", real: false },
   },
-  "remote-job-postings-monthly": {
-    id: "remote-job-postings-monthly",
-    label: "Remote-eligible job postings",
-    unit: "k",
-    cadence: "monthly",
-    startDate: "2024-01-01",
-    endDate: "2025-12-31",
-    data: [180, 175, 190, 210, 240, 260, 255, 248, 230, 215, 205, 220, 235, 250, 270, 295, 320, 335, 330, 318, 295, 275, 265, 280],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
-  "shelter-pet-adoptions-monthly": {
-    id: "shelter-pet-adoptions-monthly",
-    label: "Shelter pet adoptions",
-    unit: "k",
-    cadence: "monthly",
-    startDate: "2024-01-01",
-    endDate: "2025-12-31",
-    data: [42, 41, 45, 51, 58, 64, 63, 60, 55, 51, 48, 53, 57, 62, 68, 75, 82, 87, 85, 81, 74, 68, 64, 70],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
-  },
-  "nyc-rainfall-daily": {
-    id: "nyc-rainfall-daily",
-    label: "Daily rainfall (NYC)",
-    unit: "in",
-    cadence: "daily",
+  // CO₂ dose-response: x-axis = ppm, y-axis = composite cognitive score (baseline 100).
+  // Anchored on Satish et al. 2012 (600/1000/2500 ppm). Curve is interpolated through
+  // those three measured points across 400–2500 ppm so the slider can scrub smoothly.
+  "co2-ppm-axis": {
+    id: "co2-ppm-axis",
+    label: "Indoor CO₂ concentration",
+    unit: "ppm",
+    cadence: "scenario",
     startDate: null,
     endDate: null,
-    data: [0.2, 0.1, 0.4, 0.8, 1.2, 0.9, 0.6, 0.5, 0.7, 1.4, 1.8, 0.5, 0.3, 0.2, 0.5, 1.0, 1.5, 1.1, 0.7, 0.6, 0.9, 1.6, 2.1, 0.7],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
+    // 22 points: 400 → 2500 ppm in 100 ppm steps
+    data: [400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, 2400, 2500],
+    source: {
+      url: "https://ehp.niehs.nih.gov/doi/10.1289/ehp.1104789",
+      label: "Satish et al. 2012, Environmental Health Perspectives",
+      real: true,
+    },
   },
-  "delivery-tip-pct-daily": {
-    id: "delivery-tip-pct-daily",
-    label: "Avg delivery tip %",
-    unit: "%",
-    cadence: "daily",
+  "cognitive-score-by-co2": {
+    id: "cognitive-score-by-co2",
+    label: "Composite decision-making score",
+    unit: "index (600 ppm = 100)",
+    cadence: "scenario",
     startDate: null,
     endDate: null,
-    data: [16.2, 15.9, 17.1, 18.4, 19.8, 18.9, 18.0, 17.6, 18.2, 20.1, 21.0, 17.4, 16.5, 16.1, 17.3, 18.8, 20.4, 19.5, 18.1, 17.8, 18.7, 21.2, 22.1, 18.0],
-    source: { url: null, label: "Editorial composite (illustrative)", real: false },
+    // Satish 2012 anchors (composite of 9 cognitive functions, normalized so 600 = 100):
+    //   600 ppm → 100 (baseline)
+    //   1000 ppm → ~74
+    //   2500 ppm → ~46
+    // Interpolated smoothly between/beyond those anchors for the slider scrub.
+    data: [104, 102, 100, 95, 89, 82, 74, 70, 67, 64, 61, 58, 56, 54, 52, 51, 50, 49, 48, 47, 46.5, 46],
+    source: {
+      url: "https://ehp.niehs.nih.gov/doi/10.1289/ehp.1104789",
+      label: "Satish et al. 2012; values between tested CO₂ levels interpolated for visualization",
+      real: true,
+    },
   },
 };
 
@@ -223,6 +220,26 @@ const CORRELATION_DEFINITIONS = [
     category: "Health × Search · 9yr · 3mo smoothed",
   },
   {
+    id: "co2-cognition",
+    title: "As indoor CO₂ levels build up, decision-making breaks down",
+    titleNode: <>As indoor CO₂ levels build up, <span style={{ whiteSpace: "nowrap" }}>decision-making</span> <span style={{ whiteSpace: "nowrap" }}>breaks down</span></>,
+    chartType: "co2-slider", // interactive dose-response slider; not a time series
+    seriesA: { datasetId: "co2-ppm-axis", color: "primary" },
+    seriesB: { datasetId: "cognitive-score-by-co2", color: "secondary" },
+    r: -0.97, // strong negative dose-response across the modeled curve
+    // No annotations — replaced by anchorScenarios below for this correlation.
+    annotations: [],
+    anchorScenarios: [
+      { ppm: 420, label: "Outdoor air" },
+      { ppm: 600, label: "Well-ventilated office" },
+      { ppm: 1500, label: "Crowded classroom, late afternoon" },
+      { ppm: 2500, label: "Sealed conference room, multi-hour meeting" },
+    ],
+    why: "The air in the buildings we spend time in every day can affect how clearly we think. As CO₂ rises above about 550 ppm, decision-making can decline, with levels around 1,500 ppm potentially cutting cognitive performance in half.",
+    soWhat: "Better outcomes don't come from better information alone; they also depend on the conditions in which decisions are made. Environments are a performance variable.",
+    category: "Air quality × Cognition · scenario · interactive",
+  },
+  {
     id: "password-reset",
     title: "Sunday evenings & password resets",
     seriesA: { datasetId: "hour-of-week-shaded", color: "primary" },
@@ -255,40 +272,6 @@ const CORRELATION_DEFINITIONS = [
     },
     soWhat: "Intent signal for refi ads: bid up reno-adjacent inventory when YT views climb — you're catching homeowners *before* they shop lenders.",
     category: "Finance × Media",
-  },
-  {
-    id: "pet-adoption",
-    title: "Remote-job postings & pet adoptions",
-    seriesA: { datasetId: "remote-job-postings-monthly", color: "primary" },
-    seriesB: { datasetId: "shelter-pet-adoptions-monthly", color: "secondary" },
-    r: 0.86,
-    annotations: [
-      { idx: 5, label: "Hybrid mandates relax" },
-      { idx: 17, label: "WFH plateau, adoption peak" },
-    ],
-    why: {
-      playful: "More remote jobs = more dogs. People who work from home want a coworker who naps under the desk. The labor market is, somehow, a leading indicator of golden retriever demand.",
-      serious: "Lifestyle flexibility enables pet ownership. Remote-job volume predicts shelter adoptions with a 2-week lag, identifying a 'lifestyle-shifter' cohort.",
-    },
-    soWhat: "Cohort definition: target 'newly remote' workers with pet-care, home-office, and grocery-delivery bundles — they're rebuilding their daily life from scratch.",
-    category: "Work × Lifestyle",
-  },
-  {
-    id: "rain-delivery",
-    title: "Rainfall & food-delivery tips",
-    seriesA: { datasetId: "nyc-rainfall-daily", color: "primary" },
-    seriesB: { datasetId: "delivery-tip-pct-daily", color: "secondary" },
-    r: 0.73,
-    annotations: [
-      { idx: 10, label: "Tropical storm Wendy" },
-      { idx: 22, label: "October downpour week" },
-    ],
-    why: {
-      playful: "It rains, you tip more. Guilt? Empathy? The simple recognition that someone is *out there* getting wet so your pad thai stays dry. Weather makes us nicer.",
-      serious: "Adverse conditions trigger prosocial tipping. The effect is strongest in dense urban markets and persists 6 hours after precipitation ends.",
-    },
-    soWhat: "Dynamic creative: surface 'tip your driver' messaging during rain windows — increases LTV for delivery brands without discounting.",
-    category: "Weather × Commerce",
   },
 ];
 

@@ -32,7 +32,7 @@ function TerminalLayout({ correlations, themeColors }) {
       window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}${desiredHash}`);
     }
     // Title
-    document.title = `${active.title} — Useful Correlations`;
+    document.title = `${active.title} — Curious Correlations`;
     // OG / Twitter / canonical meta — set or update
     const setMeta = (selector, attr, value) => {
       let el = document.head.querySelector(selector);
@@ -50,7 +50,7 @@ function TerminalLayout({ correlations, themeColors }) {
     setMeta('meta[property="og:description"]', "content", description);
     setMeta('meta[property="og:url"]', "content", url);
     setMeta('meta[property="og:type"]', "content", "article");
-    setMeta('meta[property="og:site_name"]', "content", "Useful Correlations");
+    setMeta('meta[property="og:site_name"]', "content", "Curious Correlations");
     setMeta('meta[name="twitter:card"]', "content", "summary_large_image");
     setMeta('meta[name="twitter:title"]', "content", active.title);
     setMeta('meta[name="twitter:description"]', "content", description);
@@ -133,7 +133,7 @@ function TerminalNav({ themeColors }) {
           }}
           style={{ opacity: 0.85, color: "inherit", textDecoration: "none", cursor: "pointer" }}
         >
-          useful-correlations.com
+          curious-correlations.com
         </a>
         <span aria-hidden="true" style={{ opacity: 0.25, fontSize: 14, padding: "0 4px" }}>|</span>
         <span
@@ -215,7 +215,7 @@ function TerminalMaster({ correlations, activeId, onSelect, themeColors }) {
           }}
         >
           The atlas of<br />
-          <span style={{ background: themeColors.primary, padding: "0 12px" }}>useful</span>{" "}
+          <span style={{ background: themeColors.primary, padding: "0 12px" }}>curious</span>{" "}
           correlations
         </h1>
         <p
@@ -237,17 +237,28 @@ function TerminalMaster({ correlations, activeId, onSelect, themeColors }) {
 
 function TerminalDetail({ correlation, themeColors }) {
   const [highlightedAnnotation, setHighlightedAnnotation] = React.useState(null);
+  // CO₂ scenario state: ppm value of the active "Common rooms" scenario.
+  // Only meaningful when chartType === "co2-slider", but lifted here so the
+  // chart card and the scenarios card can share/sync it. null = no highlight,
+  // letting the entrance animation play unobstructed on initial load.
+  const [highlightedPpm, setHighlightedPpm] = React.useState(null);
 
-  // Reset highlight when the correlation itself changes.
+  // Reset state when the correlation itself changes.
   React.useEffect(() => {
     setHighlightedAnnotation(null);
+    setHighlightedPpm(null);
   }, [correlation.id]);
 
   return (
     <section style={{ padding: "40px 64px 64px", display: "grid", gap: 24, gridTemplateColumns: "repeat(12, 1fr)", gridAutoRows: "minmax(0, auto)" }}>
       {/* Big hero card with delta chart */}
       <div style={{ gridColumn: "span 8" }}>
-        <DeltaChartCard correlation={correlation} themeColors={themeColors} highlightedAnnotation={highlightedAnnotation} />
+        <DeltaChartCard
+          correlation={correlation}
+          themeColors={themeColors}
+          highlightedAnnotation={highlightedAnnotation}
+          highlightedPpm={highlightedPpm}
+        />
       </div>
       {/* R coefficient panel */}
       <div style={{ gridColumn: "span 4" }}>
@@ -261,24 +272,35 @@ function TerminalDetail({ correlation, themeColors }) {
       <div style={{ gridColumn: "span 4" }}>
         <SoWhatCard correlation={correlation} themeColors={themeColors} />
       </div>
-      {/* Annotations card */}
+      {/* Annotations card — or anchor scenarios for interactive scrub charts */}
       <div style={{ gridColumn: "span 3" }}>
-        <AnnotationsCard
-          correlation={correlation}
-          themeColors={themeColors}
-          highlightedAnnotation={highlightedAnnotation}
-          onHighlight={setHighlightedAnnotation}
-        />
+        {correlation.anchorScenarios ? (
+          <AnchorScenariosCard
+            correlation={correlation}
+            themeColors={themeColors}
+            highlightedPpm={highlightedPpm}
+            onHighlight={setHighlightedPpm}
+          />
+        ) : (
+          <AnnotationsCard
+            correlation={correlation}
+            themeColors={themeColors}
+            highlightedAnnotation={highlightedAnnotation}
+            onHighlight={setHighlightedAnnotation}
+          />
+        )}
       </div>
       {/* Take it with you removed — share lives in the chart card header */}
     </section>
   );
 }
 
-function DeltaChartCard({ correlation, themeColors, highlightedAnnotation }) {
+function DeltaChartCard({ correlation, themeColors, highlightedAnnotation, highlightedPpm }) {
   const { dataA, dataB } = correlation;
   const n = dataA.length;
   const w = 920;
+  // co2-slider chart no longer needs extra footer space; same height as the
+  // other chart variants.
   const h = 360;
   const pad = { l: 40, r: 40, t: 32, b: 40 };
 
@@ -288,6 +310,8 @@ function DeltaChartCard({ correlation, themeColors, highlightedAnnotation }) {
   const chartType = correlation.chartType || "delta-bar";
   const cadenceLabel = chartType === "yearly-bars"
     ? `Annual · ${correlation.dataA.length} years · hrs per day`
+    : chartType === "co2-slider"
+    ? `Dose-response · ${correlation.dataA.length} pts · 400–2500 ppm`
     : correlation.weekLabels
     ? `Co-movement · ${correlation.weekLabels.length} pts · normalized`
     : "Co-movement · normalized deviation from mean";
@@ -320,7 +344,7 @@ function DeltaChartCard({ correlation, themeColors, highlightedAnnotation }) {
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 16 }}>
         <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: -0.5, lineHeight: 1.1 }}>
-          {correlation.title}
+          {correlation.titleNode || correlation.title}
         </div>
         <ShareButton correlation={correlation} themeColors={themeColors} />
       </div>
@@ -341,6 +365,14 @@ function DeltaChartCard({ correlation, themeColors, highlightedAnnotation }) {
             highlightedAnnotation={highlightedAnnotation}
             w={w} h={h} pad={pad}
           />
+        ) : chartType === "co2-slider" ? (
+          <CO2SliderChartBody
+            correlation={correlation}
+            themeColors={themeColors}
+            progress={progress}
+            highlightedPpm={highlightedPpm}
+            w={w} h={h} pad={pad}
+          />
         ) : (
           <DeltaBarChartBody
             correlation={correlation}
@@ -351,10 +383,17 @@ function DeltaChartCard({ correlation, themeColors, highlightedAnnotation }) {
           />
         )}
       </svg>
-      <div style={{ display: "flex", gap: 24, marginTop: 12, fontSize: 12, fontFamily: "JetBrains Mono, monospace" }}>
-        <Legend dotColor={themeColors.primary} label={correlation.seriesA.label} themeColors={themeColors} />
-        <Legend dotColor={themeColors.secondary} label={correlation.seriesB.label} themeColors={themeColors} />
-      </div>
+      {chartType === "co2-slider" ? (
+        <div style={{ display: "flex", gap: 24, marginTop: 12, fontSize: 12, fontFamily: "JetBrains Mono, monospace" }}>
+          <Legend dotColor={themeColors.primary} label="CO₂ concentration (ppm)" themeColors={themeColors} />
+          <Legend dotColor={themeColors.secondary} label="Cognitive deficit (vs 600 ppm baseline)" themeColors={themeColors} />
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 24, marginTop: 12, fontSize: 12, fontFamily: "JetBrains Mono, monospace" }}>
+          <Legend dotColor={themeColors.primary} label={correlation.seriesA.label} themeColors={themeColors} />
+          <Legend dotColor={themeColors.secondary} label={correlation.seriesB.label} themeColors={themeColors} />
+        </div>
+      )}
     </div>
   );
 }
@@ -796,6 +835,283 @@ function Legend({ dotColor, label, themeColors }) {
   );
 }
 
+// -----------------------------------------------------------------------------
+// Chart body: CO2-SLIDER (mirrored-bars dose-response)
+// X-axis is CO₂ ppm (controlled, not time). The chart is split by a centered
+// baseline:
+//   ABOVE  → orange bars rising as ppm climbs (the room filling with CO₂)
+//   BELOW  → blue bars dropping as composite cognitive score falls
+// Together the two halves form a widening "scissor" that visualizes the core
+// story at a glance: as one goes up, the other goes down. The slider drives a
+// glow column + paired floating readouts; the bars themselves are static across
+// scrubs so the user can see where they are on the full curve.
+// -----------------------------------------------------------------------------
+function CO2SliderChartBody({ correlation, themeColors, progress, highlightedPpm, w, h, pad }) {
+  const scenarios = correlation.anchorScenarios || [];  const { dataA: ppmAxis, dataB: scores } = correlation;
+  const minPpm = ppmAxis[0];
+  const maxPpm = ppmAxis[ppmAxis.length - 1];
+
+  const innerW = w - pad.l - pad.r;
+  const innerH = h - pad.t - pad.b;
+  // We split the inner area in two — top half for CO₂, bottom half for score.
+  // Leave a small gutter around the centerline so the two halves don't kiss.
+  const gutter = 6;
+  const halfH = (innerH - gutter * 2) / 2;
+  const cy = pad.t + innerH / 2; // visual centerline
+  const topBaseline = cy - gutter; // where orange bars start (growing up)
+  const botBaseline = cy + gutter; // where blue bars start (growing down)
+
+  const xForPpm = (p) => pad.l + ((p - minPpm) / (maxPpm - minPpm)) * innerW;
+
+  // Same interpolation as before — drives the live readouts.
+  const scoreAtPpm = (p) => {
+    if (p <= ppmAxis[0]) return scores[0];
+    if (p >= ppmAxis[ppmAxis.length - 1]) return scores[scores.length - 1];
+    for (let i = 0; i < ppmAxis.length - 1; i++) {
+      const a = ppmAxis[i];
+      const b = ppmAxis[i + 1];
+      if (p >= a && p <= b) {
+        const t = (p - a) / (b - a);
+        return scores[i] + t * (scores[i + 1] - scores[i]);
+      }
+    }
+    return scores[scores.length - 1];
+  };
+
+  // Bar geometry: 22 ppm steps (400→2500 by 100). Width = full step minus a
+  // small gap so bars feel like a column, not a continuous wash.
+  const stepW = innerW / (ppmAxis.length - 1);
+  const barW = Math.max(6, stepW * 0.62);
+
+  // Normalize CO₂: 400 ppm = 0, 2500 ppm = 1. (Use the dataset bounds so the
+  // top bar at 2500 reaches all the way up.)
+  const co2Norm = (p) => (p - minPpm) / (maxPpm - minPpm);
+  // Cognitive deficit: 0 at score 100 (or above), grows as score falls toward
+  // 40. We clamp at the same normalized scale as CO₂ so the "scissor" is
+  // visually proportional. Max deficit = 100 - 40 = 60 score points.
+  const deficitNorm = (score) => Math.max(0, Math.min(1, (100 - score) / 60));
+
+  // Reveal animation: bars unfurl left→right with the same progress curve as
+  // the other charts (1.9s default). Each bar fades in as `progress` crosses
+  // its x position.
+  const revealAt = (i) => {
+    const t = i / (ppmAxis.length - 1);
+    return Math.max(0, Math.min(1, (progress - t * 0.9) * 8));
+  };
+
+  // Highlight state — null means no scenario is selected, so we just show the
+  // bars without the floating readout column.
+  const hasHighlight = highlightedPpm != null;
+  const currentScore = hasHighlight ? scoreAtPpm(highlightedPpm) : 0;
+  const currentX = hasHighlight ? xForPpm(highlightedPpm) : 0;
+  const dropPct = hasHighlight ? Math.round(100 - currentScore) : 0;
+
+  // X-axis ticks anchored at meaningful CO₂ landmarks
+  const xTicks = [
+    { ppm: 420, label: "420\noutdoor" },
+    { ppm: 1000, label: "1000\nASHRAE" },
+    { ppm: 1500, label: "1500" },
+    { ppm: 2000, label: "2000" },
+    { ppm: 2500, label: "2500" },
+  ];
+
+  return (
+    <>
+      {/* axis labels for each half */}
+      <text
+        x={4}
+        y={pad.t + 12}
+        textAnchor="start"
+        fontSize={10}
+        fontFamily="JetBrains Mono, monospace"
+        fill={themeColors.primary}
+        fontWeight={700}
+        letterSpacing={1}
+      >
+        CO₂ ↑
+      </text>
+      <text
+        x={4}
+        y={pad.t + innerH - 4}
+        textAnchor="start"
+        fontSize={10}
+        fontFamily="JetBrains Mono, monospace"
+        fill={themeColors.secondary}
+        fontWeight={700}
+        letterSpacing={1}
+      >
+        SCORE ↓
+      </text>
+
+      {/* centerline + ppm tick labels straddling it */}
+      <line
+        x1={pad.l}
+        x2={w - pad.r}
+        y1={cy}
+        y2={cy}
+        stroke={themeColors.surface + "30"}
+        strokeWidth={1}
+      />
+      {xTicks.map((t) => (
+        <g key={t.ppm}>
+          {t.label.split("\n").map((line, li) => (
+            <text
+              key={li}
+              x={xForPpm(t.ppm)}
+              y={cy + 4 + li * 11}
+              textAnchor="middle"
+              fontSize={li === 0 ? 9 : 8}
+              fontFamily="JetBrains Mono, monospace"
+              fill={themeColors.surface + (li === 0 ? "70" : "50")}
+              fontWeight={li === 0 ? 600 : 400}
+              letterSpacing={li === 0 ? 0.3 : 0.5}
+              dominantBaseline="hanging"
+            >
+              {line}
+            </text>
+          ))}
+        </g>
+      ))}
+
+      {/* gradients */}
+      <defs>
+        <linearGradient id="co2-up-grad" x1="0" y1="1" x2="0" y2="0">
+          <stop offset="0%" stopColor={themeColors.primary} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={themeColors.primary} stopOpacity="1" />
+        </linearGradient>
+        <linearGradient id="co2-down-grad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={themeColors.secondary} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={themeColors.secondary} stopOpacity="1" />
+        </linearGradient>
+      </defs>
+
+      {/* mirrored bars */}
+      {ppmAxis.map((p, i) => {
+        const x = xForPpm(p) - barW / 2;
+        const upH = co2Norm(p) * halfH;
+        const downH = deficitNorm(scores[i]) * halfH;
+        const fade = revealAt(i);
+        // Highlight the bar nearest the active scenario, if any.
+        const isCurrent = hasHighlight && Math.abs(xForPpm(p) - currentX) < stepW / 2;
+        return (
+          <g key={p} opacity={fade}>
+            {/* CO₂ bar (up) */}
+            <rect
+              x={x}
+              y={topBaseline - upH}
+              width={barW}
+              height={Math.max(0.5, upH)}
+              rx={2}
+              fill="url(#co2-up-grad)"
+              opacity={isCurrent ? 1 : 0.85}
+            />
+            {/* score bar (down) */}
+            <rect
+              x={x}
+              y={botBaseline}
+              width={barW}
+              height={Math.max(0.5, downH)}
+              rx={2}
+              fill="url(#co2-down-grad)"
+              opacity={isCurrent ? 1 : 0.85}
+            />
+          </g>
+        );
+      })}
+
+      {/* slider position glow column — only when a scenario is highlighted AND the entrance animation has cleared the local bars */}      {hasHighlight && progress * 0.9 + 0.05 >= co2Norm(highlightedPpm) * 0.9 && (
+        <g>
+          <rect
+            x={currentX - barW / 2 - 4}
+            y={pad.t}
+            width={barW + 8}
+            height={innerH}
+            rx={4}
+            fill={themeColors.surface}
+            fillOpacity={0.05}
+          />
+          <line
+            x1={currentX}
+            x2={currentX}
+            y1={pad.t}
+            y2={pad.t + innerH}
+            stroke={themeColors.surface + "70"}
+            strokeWidth={1}
+            strokeDasharray="2,3"
+          />
+
+          {/* CO₂ readout at top */}
+          <g transform={`translate(${Math.max(pad.l + 60, Math.min(w - pad.r - 60, currentX))}, ${pad.t + 22})`}>
+            <rect x={-58} y={-16} width={116} height={26} rx={6} fill={themeColors.primary} />
+            <text
+              x={0}
+              y={2}
+              textAnchor="middle"
+              fontSize={12}
+              fontFamily="JetBrains Mono, monospace"
+              fontWeight={700}
+              fill={themeColors.text}
+            >
+              {Math.round(highlightedPpm).toLocaleString()}
+              <tspan fontSize={10} fontWeight={400} opacity={0.7}>{` ppm`}</tspan>
+            </text>
+          </g>
+          {/* score readout at bottom */}
+          <g transform={`translate(${Math.max(pad.l + 60, Math.min(w - pad.r - 60, currentX))}, ${pad.t + innerH - 12})`}>
+            <rect x={-58} y={-12} width={116} height={26} rx={6} fill={themeColors.secondary} />
+            <text
+              x={0}
+              y={6}
+              textAnchor="middle"
+              fontSize={12}
+              fontFamily="JetBrains Mono, monospace"
+              fontWeight={700}
+              fill={themeColors.surface}
+            >
+              −{dropPct}%
+              <tspan fontSize={10} fontWeight={400} opacity={0.85}>{`  cognition`}</tspan>
+            </text>
+          </g>
+        </g>
+      )}
+
+      {/* Scenario markers — small dots on the centerline at each anchor ppm.
+          Hint that the chart is interactive without obscuring the bars. They
+          fade in only after the entrance animation has reached their x. */}
+      {scenarios.map((s, i) => {
+        const sx = xForPpm(s.ppm);
+        const reveal = Math.max(0, Math.min(1, (progress - co2Norm(s.ppm) * 0.9) * 6));
+        const isActive = highlightedPpm != null && Math.abs(highlightedPpm - s.ppm) < 50;
+        return (
+          <g key={`scn-${i}`} opacity={reveal}>
+            {isActive && (
+              <circle cx={sx} cy={cy} r={9} fill={themeColors.surface} opacity={0.18}>
+                <animate attributeName="r" values="7;12;7" dur="1.6s" repeatCount="indefinite" />
+                <animate attributeName="opacity" values="0.28;0.05;0.28" dur="1.6s" repeatCount="indefinite" />
+              </circle>
+            )}
+            <circle
+              cx={sx}
+              cy={cy}
+              r={isActive ? 5 : 3.5}
+              fill={themeColors.surface}
+              stroke={themeColors.text}
+              strokeWidth={1}
+              style={{ transition: "r 200ms ease" }}
+            />
+          </g>
+        );
+      })}
+    </>
+  );
+}
+
+// Slider + live readout that lives below the SVG. Drives the same `ppm` state
+// the chart body reads from, so motion is fully linked.
+// (Unused — the CO₂ chart now uses the same progress-driven entrance animation
+// as the other charts. Kept here previously, removed in favor of scenario-tap
+// highlighting via the AnchorScenariosCard.)
+
 function RPanel({ correlation, themeColors }) {
   const r = correlation.r;
   const strength = Math.abs(r);
@@ -893,17 +1209,39 @@ function RPanel({ correlation, themeColors }) {
             marginBottom: 10,
           }}
         >
-          {[0, 1, 2, 3, 4].map((i) => (
+          {[0, 1, 2, 3, 4].map((i) => {
+            // For the active band, fill partial width based on the actual
+            // correlation strength within that band's 0.2-wide window.
+            // e.g. r=0.97 → "very strong" band fills 85% (since 0.97 sits
+            // 85% of the way from 0.8 → 1.0).
+            const bandLow = i * 0.2;
+            const isActiveBand = i === sigDots - 1 && meterProgress >= 1;
+            const intraBandFill = Math.max(0, Math.min(1, (strength - bandLow) / 0.2));
+            const isFullyFilled = i < filledBands && !isActiveBand;
+            return (
             <div
               key={i}
               style={{
                 height: 10,
                 borderRadius: 3,
-                background: i < filledBands ? themeColors.text : themeColors.text + "1a",
+                background: isFullyFilled ? themeColors.text : themeColors.text + "1a",
                 position: "relative",
+                overflow: "hidden",
                 transition: "background 180ms ease-out",
               }}
             >
+              {isActiveBand && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    width: `${intraBandFill * 100}%`,
+                    background: themeColors.text,
+                    borderRadius: 3,
+                    transition: "width 280ms ease-out",
+                  }}
+                />
+              )}
               {meterProgress > 0 && i === notchIndex && (
                 <div
                   style={{
@@ -919,7 +1257,8 @@ function RPanel({ correlation, themeColors }) {
                 />
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
         <div
           style={{
@@ -1136,6 +1475,231 @@ function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHi
   );
 }
 
+// -----------------------------------------------------------------------------
+// AnchorScenariosCard
+// Replaces AnnotationsCard for interactive scrub charts (currently CO₂). Each
+// scenario is a real-world ppm value with a plain-language label; clicking it
+// snaps the chart's slider there. Selected state derives from `ppm` proximity
+// rather than a click index — so dragging the slider also reflects in the
+// card without needing a second source of truth.
+// -----------------------------------------------------------------------------
+function AnchorScenariosCard({ correlation, themeColors, highlightedPpm, onHighlight }) {
+  const ppm = highlightedPpm;
+  const scrollRef = React.useRef(null);
+  const rowRefs = React.useRef([]);
+  // Same interpolation as the chart body — keep them in lockstep.
+  const ppmAxis = correlation.dataA;
+  const scores = correlation.dataB;
+  const scoreAtPpm = (p) => {
+    if (p <= ppmAxis[0]) return scores[0];
+    if (p >= ppmAxis[ppmAxis.length - 1]) return scores[scores.length - 1];
+    for (let i = 0; i < ppmAxis.length - 1; i++) {
+      const a = ppmAxis[i];
+      const b = ppmAxis[i + 1];
+      if (p >= a && p <= b) {
+        const t = (p - a) / (b - a);
+        return scores[i] + t * (scores[i + 1] - scores[i]);
+      }
+    }
+    return scores[scores.length - 1];
+  };
+
+  // Find the scenario closest to the current highlighted ppm. If nothing is
+  // highlighted (null), no scenario is active.
+  const scenarios = correlation.anchorScenarios;
+  let activeIdx = -1;
+  if (ppm != null) {
+    let bestDist = Infinity;
+    scenarios.forEach((s, i) => {
+      const d = Math.abs(s.ppm - ppm);
+      if (d < bestDist) {
+        bestDist = d;
+        activeIdx = i;
+      }
+    });
+    // Only consider it "active" if we're reasonably close (within 75 ppm).
+    if (bestDist > 75) activeIdx = -1;
+  }
+
+  const handleClick = (i, ppmVal) => {
+    onHighlight(ppmVal);
+    // If user clicks a row past the first couple, scroll the *next* row into
+    // view so they get a hint there's more below. Uses the container's own
+    // scrollTop — never scrollIntoView.
+    const container = scrollRef.current;
+    const nextRow = rowRefs.current[i + 1];
+    if (container && nextRow && i >= 2 && i < scenarios.length - 1) {
+      const targetTop = nextRow.offsetTop - container.clientHeight + nextRow.offsetHeight + 8;
+      if (targetTop > container.scrollTop) {
+        container.scrollTo({ top: targetTop, behavior: "smooth" });
+      }
+    }
+  };
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: `1px solid ${themeColors.text}15`,
+        borderRadius: 24,
+        padding: 32,
+        height: "100%",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        minHeight: 0,
+      }}
+    >
+      <div
+        style={{
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 13,
+          letterSpacing: 1.2,
+          textTransform: "uppercase",
+          color: themeColors.text,
+          fontWeight: 700,
+          marginBottom: 20,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+        }}
+      >
+        <span style={{ width: 6, height: 6, background: themeColors.primary, borderRadius: 2 }} />
+        <span style={{ whiteSpace: "nowrap" }}>Common CO₂ levels</span>
+      </div>
+      <div
+        style={{
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 12,
+          color: themeColors.text + "90",
+          lineHeight: 1.5,
+          marginBottom: 16,
+          marginTop: -8,
+        }}
+      >
+        Tap a location to highlight it on the chart.
+      </div>
+      <div
+        ref={scrollRef}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          maxHeight: 165,
+          overflowY: "auto",
+          marginRight: -8,
+          paddingRight: 4,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          scrollbarWidth: "thin",
+          scrollbarColor: `${themeColors.text}30 transparent`,
+        }}
+        className="events-scroll"
+      >
+        {scenarios.map((s, i) => (
+          <ScenarioRow
+            key={i}
+            ref={(el) => (rowRefs.current[i] = el)}
+            scenario={s}
+            score={scoreAtPpm(s.ppm)}
+            isActive={i === activeIdx}
+            onClick={() => handleClick(i, s.ppm)}
+            themeColors={themeColors}
+          />
+        ))}
+      </div>
+      <style>{`
+        .events-scroll::-webkit-scrollbar { width: 6px; }
+        .events-scroll::-webkit-scrollbar-track { background: transparent; }
+        .events-scroll::-webkit-scrollbar-thumb { background: ${themeColors.text}25; border-radius: 999px; }
+        .events-scroll::-webkit-scrollbar-thumb:hover { background: ${themeColors.text}45; }
+      `}</style>
+    </div>
+  );
+}
+
+const ScenarioRow = React.forwardRef(function ScenarioRow({ scenario, score, isActive, onClick, themeColors }, ref) {
+  const [hover, setHover] = React.useState(false);
+  const drop = Math.round(100 - score);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-pressed={isActive}
+      style={{
+        display: "block",
+        width: "100%",
+        textAlign: "left",
+        background: isActive ? themeColors.primary + "22" : hover ? themeColors.text + "06" : "transparent",
+        border: `1px solid ${isActive ? themeColors.primary + "55" : themeColors.text + "12"}`,
+        font: "inherit",
+        cursor: "pointer",
+        padding: "8px 12px",
+        borderRadius: 10,
+        position: "relative",
+        transition: "background 160ms ease, border-color 160ms ease",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "baseline",
+          gap: 12,
+          marginBottom: 2,
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 13,
+            fontWeight: 700,
+            color: themeColors.text,
+            letterSpacing: -0.2,
+          }}
+        >
+          <span
+            style={{
+              padding: "2px 7px",
+              borderRadius: 6,
+              background: isActive ? themeColors.text : themeColors.primary,
+              color: isActive ? themeColors.surface : themeColors.text,
+              transition: "background 160ms ease, color 160ms ease",
+              marginRight: 6,
+            }}
+          >
+            {scenario.ppm.toLocaleString()}
+          </span>
+          <span style={{ opacity: 0.6, fontWeight: 500 }}>ppm</span>
+        </span>
+        <span
+          style={{
+            fontFamily: "JetBrains Mono, monospace",
+            fontSize: 11,
+            fontWeight: 700,
+            color: drop >= 8 ? themeColors.primary : themeColors.text + "70",
+          }}
+        >
+          {drop >= 1 ? `−${drop}%` : "baseline"}
+        </span>
+      </div>
+      <div
+        style={{
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSize: 12,
+          color: themeColors.text + "B0",
+          lineHeight: 1.35,
+        }}
+      >
+        {scenario.label}
+      </div>
+    </button>
+  );
+});
+
 function AnnotationRow({ annotation, isLast, isActive, onClick, themeColors, weekLabels }) {
   const [hover, setHover] = React.useState(false);
   const dateLabel = resolveDateLabel(weekLabels, annotation.idx);
@@ -1232,10 +1796,10 @@ function ShareButton({ correlation, themeColors }) {
   const [hover, setHover] = React.useState(false);
   const wrapperRef = React.useRef(null);
   const permalink = (() => {
-    if (typeof window === "undefined") return `https://useful-correlations.com/#${correlation.id}`;
+    if (typeof window === "undefined") return `https://curious-correlations.com/#${correlation.id}`;
     return `${window.location.origin}${window.location.pathname}#${correlation.id}`;
   })();
-  const shareText = `${correlation.title} — useful-correlations.com`;
+  const shareText = `${correlation.title} — curious-correlations.com`;
 
   // Close popover on outside click or Escape.
   React.useEffect(() => {
@@ -1359,9 +1923,15 @@ function SharePopover({ themeColors, linkedInUrl, mailtoUrl, permalink, copied, 
 
       <ShareOption
         themeColors={themeColors}
-        href={linkedInUrl}
-        external
-        onClick={onClose}
+        onClick={(e) => {
+          if (e) e.preventDefault();
+          try {
+            (window.top || window).open(linkedInUrl, "_blank", "noopener,noreferrer");
+          } catch (_) {
+            window.open(linkedInUrl, "_blank", "noopener,noreferrer");
+          }
+          onClose && onClose();
+        }}
         icon={<LinkedInGlyph />}
         label="Share on LinkedIn"
       />
@@ -1514,7 +2084,7 @@ function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) 
               textWrap: "balance",
             }}
           >
-            More surprising correlations
+            More from the atlas
           </h2>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -1537,8 +2107,8 @@ function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) 
         }}
       >
         {all.map((c) => (
-          <div key={c.id} style={{ scrollSnapAlign: "start" }}>
-            <GalleryCard correlation={c} themeColors={themeColors} onSelect={onSelect} />
+          <div key={c.id} style={{ scrollSnapAlign: "start", display: "flex" }}>
+            <GalleryCard correlation={c} themeColors={themeColors} onSelect={onSelect} fillHeight />
           </div>
         ))}
       </div>
@@ -1579,7 +2149,7 @@ function CarouselBtn({ onClick, themeColors, label }) {
   );
 }
 
-function GalleryCard({ correlation, themeColors, onSelect, active }) {
+function GalleryCard({ correlation, themeColors, onSelect, active, fillHeight }) {
   const { r } = correlation;
   const dir = r > 0 ? "+" : "−";
   return (
@@ -1598,6 +2168,7 @@ function GalleryCard({ correlation, themeColors, onSelect, active }) {
         flexDirection: "column",
         gap: 20,
         minHeight: 280,
+        height: fillHeight ? "100%" : undefined,
         width: "100%",
         transition: "transform .15s ease, border-color .15s ease",
       }}
@@ -1689,7 +2260,7 @@ function MiniSpark({ seriesA, seriesB, themeColors }) {
 
 function TerminalSubmit({ id, themeColors }) {
   const [copied, setCopied] = React.useState(false);
-  const email = "hello@useful-correlations.com";
+  const email = "hello@curious-correlations.com";
 
   const handleCopy = async () => {
     try {
@@ -1736,7 +2307,7 @@ function TerminalSubmit({ id, themeColors }) {
           Submit your own
         </div>
         <h2 style={{ fontSize: 40, fontWeight: 800, margin: 0, letterSpacing: -1, textWrap: "balance" }}>
-          Spotted a useful correlation?
+          Spotted a curious correlation?
         </h2>
         <p
           style={{
