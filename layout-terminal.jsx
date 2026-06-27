@@ -1134,7 +1134,11 @@ function RPanel({ correlation, themeColors }) {
   const numberProgress = useChartProgress(`r:${correlation.id}`, 1900);
   const animatedR = r * numberProgress;
   // Meter fills band-by-band in lockstep with the chart and number.
-  const meterProgress = useChartProgress(`meter:${correlation.id}`, 1900);
+  // Replays the meter (and its sound) the first time the user interacts, since
+  // browsers block audio until then — so the very first correlation still gets
+  // its audible run on first click anywhere.
+  const [armEpoch, setArmEpoch] = React.useState(0);
+  const meterProgress = useChartProgress(`meter:${correlation.id}:${armEpoch}`, 1900);
   const filledBands = Math.floor(meterProgress * sigDots + 0.0001);
   // Which band the moving notch is currently over (0..sigDots-1)
   const notchIndex = meterProgress >= 1
@@ -1155,6 +1159,8 @@ function RPanel({ correlation, themeColors }) {
           audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
         } catch (e) { /* unsupported */ }
       }
+      // Replay the meter once so its tones are heard on this first interaction.
+      setArmEpoch((e) => e + 1);
     };
     window.addEventListener("pointerdown", arm, { once: true });
     window.addEventListener("keydown", arm, { once: true });
@@ -1163,8 +1169,8 @@ function RPanel({ correlation, themeColors }) {
       window.removeEventListener("keydown", arm);
     };
   }, []);
-  // Reset the note tracker whenever the correlation (and its animation) restarts.
-  React.useEffect(() => { prevStepRef.current = 0; }, [correlation.id]);
+  // Reset the note tracker whenever the correlation or the replay epoch restarts.
+  React.useEffect(() => { prevStepRef.current = 0; }, [correlation.id, armEpoch]);
   React.useEffect(() => {
     const ctx = audioCtxRef.current;
     // Always play the full ascending do-re-mi-fa-so as the meter animates,
@@ -1484,7 +1490,7 @@ function playEventTone() {
   osc.frequency.setValueAtTime(1318.5, t); // E6
   const gn = gain.gain;
   gn.setValueAtTime(0.0001, t);
-  gn.exponentialRampToValueAtTime(0.14, t + 0.004);
+  gn.exponentialRampToValueAtTime(0.09, t + 0.004);
   gn.exponentialRampToValueAtTime(0.0001, t + 0.6);
   osc.connect(gain).connect(ctx.destination);
   osc.start(t);
