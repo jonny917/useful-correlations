@@ -219,7 +219,7 @@ function TerminalMaster({ correlations, activeId, onSelect, themeColors }) {
             fontWeight: 900,
             letterSpacing: -2,
             margin: 0,
-            lineHeight: 0.95,
+            lineHeight: 1.1,
           }}
         >
           The atlas of<br />
