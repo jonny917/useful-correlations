@@ -119,20 +119,23 @@ function TerminalLayout({ correlations, themeColors }) {
 }
 
 function TerminalNav({ themeColors }) {
+  const isMobile = useIsMobile();
   return (
     <header
       style={{
-        padding: "24px 64px",
+        padding: isMobile ? "14px 18px" : "24px 64px",
         background: themeColors.text,
         color: themeColors.surface,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: isMobile ? 8 : 0,
         fontFamily: "JetBrains Mono, monospace",
-        fontSize: 13,
+        fontSize: isMobile ? 12 : 13,
       }}
     >
-      <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 10 : 16 }}>
         <a
           href="#"
           onClick={(e) => {
@@ -169,7 +172,7 @@ function TerminalNav({ themeColors }) {
           real data
         </span>
       </div>
-      <div style={{ display: "flex", gap: 32, opacity: 0.85 }}>
+      <div style={{ display: "flex", gap: isMobile ? 18 : 32, opacity: 0.85, fontSize: isMobile ? 11 : "inherit" }}>
         <a
           href="#explore"
           onClick={(e) => {
@@ -209,13 +212,31 @@ function TerminalNav({ themeColors }) {
   );
 }
 
+// Reactive viewport check so inline-styled components can branch on mobile.
+function useIsMobile(breakpoint = 760) {
+  const [isMobile, setIsMobile] = React.useState(
+    typeof window !== "undefined" ? window.innerWidth <= breakpoint : false
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
+    const on = () => setIsMobile(mq.matches);
+    on();
+    mq.addEventListener ? mq.addEventListener("change", on) : mq.addListener(on);
+    return () => {
+      mq.removeEventListener ? mq.removeEventListener("change", on) : mq.removeListener(on);
+    };
+  }, [breakpoint]);
+  return isMobile;
+}
+
 function TerminalMaster({ correlations, activeId, onSelect, themeColors }) {
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "56px 64px 32px", borderBottom: `1px solid ${themeColors.text}15` }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 48 }}>
+    <section style={{ padding: isMobile ? "32px 20px 24px" : "56px 64px 32px", borderBottom: `1px solid ${themeColors.text}15` }}>
+      <div style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "baseline", gap: isMobile ? 16 : 48 }}>
         <h1
           style={{
-            fontSize: "clamp(40px, 6vw, 80px)",
+            fontSize: "clamp(34px, 9vw, 80px)",
             fontWeight: 900,
             letterSpacing: -2,
             margin: 0,
@@ -228,9 +249,9 @@ function TerminalMaster({ correlations, activeId, onSelect, themeColors }) {
         </h1>
         <p
           style={{
-            fontSize: 16,
+            fontSize: isMobile ? 15 : 16,
             lineHeight: 1.5,
-            maxWidth: 320,
+            maxWidth: isMobile ? "none" : 320,
             margin: 0,
             color: themeColors.text + "cc",
             textWrap: "pretty",
@@ -257,10 +278,11 @@ function TerminalDetail({ correlation, themeColors }) {
     setHighlightedPpm(null);
   }, [correlation.id]);
 
+  const isMobile = useIsMobile();
   return (
-    <section style={{ padding: "40px 64px 64px", display: "grid", gap: 24, gridTemplateColumns: "repeat(12, 1fr)", gridAutoRows: "minmax(0, auto)" }}>
+    <section style={{ padding: isMobile ? "24px 16px 40px" : "40px 64px 64px", display: "grid", gap: isMobile ? 16 : 24, gridTemplateColumns: isMobile ? "1fr" : "repeat(12, 1fr)", gridAutoRows: "minmax(0, auto)" }}>
       {/* Big hero card with delta chart */}
-      <div style={{ gridColumn: "span 8" }}>
+      <div style={{ gridColumn: isMobile ? "auto" : "span 8" }}>
         <DeltaChartCard
           correlation={correlation}
           themeColors={themeColors}
@@ -269,19 +291,19 @@ function TerminalDetail({ correlation, themeColors }) {
         />
       </div>
       {/* R coefficient panel */}
-      <div style={{ gridColumn: "span 4" }}>
+      <div style={{ gridColumn: isMobile ? "auto" : "span 4" }}>
         <RPanel correlation={correlation} themeColors={themeColors} />
       </div>
       {/* Why card */}
-      <div style={{ gridColumn: "span 5" }}>
+      <div style={{ gridColumn: isMobile ? "auto" : "span 5" }}>
         <WhyCard correlation={correlation} themeColors={themeColors} />
       </div>
       {/* So what card */}
-      <div style={{ gridColumn: "span 4" }}>
+      <div style={{ gridColumn: isMobile ? "auto" : "span 4" }}>
         <SoWhatCard correlation={correlation} themeColors={themeColors} />
       </div>
       {/* Annotations card — or anchor scenarios for interactive scrub charts */}
-      <div style={{ gridColumn: "span 3" }}>
+      <div style={{ gridColumn: isMobile ? "auto" : "span 3" }}>
         {correlation.anchorScenarios ? (
           <AnchorScenariosCard
             correlation={correlation}
@@ -1134,11 +1156,7 @@ function RPanel({ correlation, themeColors }) {
   const numberProgress = useChartProgress(`r:${correlation.id}`, 1900);
   const animatedR = r * numberProgress;
   // Meter fills band-by-band in lockstep with the chart and number.
-  // Replays the meter (and its sound) the first time the user interacts, since
-  // browsers block audio until then — so the very first correlation still gets
-  // its audible run on first click anywhere.
-  const [armEpoch, setArmEpoch] = React.useState(0);
-  const meterProgress = useChartProgress(`meter:${correlation.id}:${armEpoch}`, 1900);
+  const meterProgress = useChartProgress(`meter:${correlation.id}`, 1900);
   const filledBands = Math.floor(meterProgress * sigDots + 0.0001);
   // Which band the moving notch is currently over (0..sigDots-1)
   const notchIndex = meterProgress >= 1
@@ -1146,55 +1164,6 @@ function RPanel({ correlation, themeColors }) {
     : Math.min(sigDots - 1, Math.floor(meterProgress * sigDots));
   // Only show the active label after the meter settles, so words don't flash mid-fill
   const showLabel = meterProgress >= 1;
-
-  // Subtle audio cue: a short rising "tick" each time the meter fills another band.
-  // Synthesized with Web Audio (no asset). Gated behind a one-time user gesture
-  // because browsers block autoplay audio until the user interacts with the page.
-  const audioCtxRef = React.useRef(null);
-  const prevStepRef = React.useRef(0);
-  React.useEffect(() => {
-    const arm = () => {
-      if (!audioCtxRef.current) {
-        try {
-          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-        } catch (e) { /* unsupported */ }
-      }
-      // Replay the meter once so its tones are heard on this first interaction.
-      setArmEpoch((e) => e + 1);
-    };
-    window.addEventListener("pointerdown", arm, { once: true });
-    window.addEventListener("keydown", arm, { once: true });
-    return () => {
-      window.removeEventListener("pointerdown", arm);
-      window.removeEventListener("keydown", arm);
-    };
-  }, []);
-  // Reset the note tracker whenever the correlation or the replay epoch restarts.
-  React.useEffect(() => { prevStepRef.current = 0; }, [correlation.id, armEpoch]);
-  React.useEffect(() => {
-    const ctx = audioCtxRef.current;
-    // Always play the full ascending do-re-mi-fa-so as the meter animates,
-    // independent of how many strength bands a given correlation fills — so
-    // every card plays the same complete five-note run.
-    const step = Math.min(5, Math.floor(meterProgress * 5 + 0.0001));
-    if (!ctx) { prevStepRef.current = step; return; }
-    if (step > prevStepRef.current && step > 0) {
-      const scale = [261.63, 293.66, 329.63, 349.23, 392.0]; // do re mi fa so (C4 D4 E4 F4 G4)
-      const freq = scale[Math.min(scale.length - 1, step - 1)];
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "triangle";
-      osc.frequency.value = freq;
-      const t = ctx.currentTime;
-      gain.gain.setValueAtTime(0.0001, t);
-      gain.gain.exponentialRampToValueAtTime(0.08, t + 0.008);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(t);
-      osc.stop(t + 0.14);
-    }
-    prevStepRef.current = step;
-  }, [meterProgress]);
 
   return (
     <div
@@ -1470,40 +1439,12 @@ function AnnotationCallout({ label, themeColors, chartWidth, cxValue }) {
   );
 }
 
-// Distinct one-shot tone for event clicks — a soft fixed-pitch bell, the same
-// every time (intentionally different from the meter's ascending scale). The
-// click itself is the user gesture, so we can lazily spin up a shared context.
-let _eventAudioCtx = null;
-function playEventTone() {
-  try {
-    if (!_eventAudioCtx) _eventAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  } catch (e) { return; }
-  const ctx = _eventAudioCtx;
-  if (!ctx) return;
-  if (ctx.state === "suspended") ctx.resume();
-  const t = ctx.currentTime;
-  // Clean, bright "ping": a single high sine with a fast attack and a long,
-  // shimmering exponential tail.
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(1318.5, t); // E6
-  const gn = gain.gain;
-  gn.setValueAtTime(0.0001, t);
-  gn.exponentialRampToValueAtTime(0.09, t + 0.004);
-  gn.exponentialRampToValueAtTime(0.0001, t + 0.6);
-  osc.connect(gain).connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + 0.62);
-}
-
 function AnnotationsCard({ correlation, themeColors, highlightedAnnotation, onHighlight }) {
   const scrollRef = React.useRef(null);
   const rowRefs = React.useRef([]);
   const annotations = correlation.annotations;
 
   const handleClick = (i) => {
-    playEventTone();
     onHighlight(highlightedAnnotation === i ? null : i);
     // Hint that there's more below: when a row is clicked, scroll the next row
     // into view if it's currently hidden under the fold. Uses the container's
@@ -1645,7 +1586,6 @@ function AnchorScenariosCard({ correlation, themeColors, highlightedPpm, onHighl
   }
 
   const handleClick = (i, ppmVal) => {
-    playEventTone();
     onHighlight(ppmVal);
     // If user clicks a row past the first couple, scroll the *next* row into
     // view so they get a hint there's more below. Uses the container's own
@@ -2176,6 +2116,7 @@ function ShareGlyph({ color }) {
 
 function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) {
   const all = correlations.filter((c) => c.id !== activeId);
+  const isMobile = useIsMobile();
   const scrollerRef = React.useRef(null);
   const scrollBy = (dir) => {
     const el = scrollerRef.current;
@@ -2184,8 +2125,8 @@ function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) 
   };
 
   return (
-    <section id={id} style={{ padding: "72px 0", borderTop: `1px solid ${themeColors.text}15` }}>
-      <div style={{ padding: "0 64px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: 40, gap: 24, flexWrap: "wrap" }}>
+    <section id={id} style={{ padding: isMobile ? "48px 0" : "72px 0", borderTop: `1px solid ${themeColors.text}15` }}>
+      <div style={{ padding: isMobile ? "0 20px" : "0 64px", display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: isMobile ? 24 : 40, gap: 24, flexWrap: "wrap" }}>
         <div>
           <div
             style={{
@@ -2222,12 +2163,12 @@ function TerminalGallery({ id, correlations, activeId, onSelect, themeColors }) 
         style={{
           display: "grid",
           gridAutoFlow: "column",
-          gridAutoColumns: "360px",
-          gap: 24,
+          gridAutoColumns: isMobile ? "300px" : "360px",
+          gap: isMobile ? 16 : 24,
           overflowX: "auto",
           scrollSnapType: "x mandatory",
           paddingBottom: 12,
-          paddingInline: 64,
+          paddingInline: isMobile ? 20 : 64,
           scrollbarWidth: "thin",
         }}
       >
@@ -2384,6 +2325,7 @@ function MiniSpark({ seriesA, seriesB, themeColors }) {
 }
 
 function TerminalSubmit({ id, themeColors }) {
+  const isMobile = useIsMobile();
   const [copied, setCopied] = React.useState(false);
   const email = "hello@curious-correlations.com";
 
@@ -2409,13 +2351,13 @@ function TerminalSubmit({ id, themeColors }) {
     <section
       id={id}
       style={{
-        padding: "72px 64px",
+        padding: isMobile ? "48px 20px" : "72px 64px",
         background: themeColors.text,
         color: themeColors.surface,
         display: "flex",
         flexDirection: "column",
         alignItems: "flex-start",
-        gap: 32,
+        gap: isMobile ? 24 : 32,
       }}
     >
       <div>
